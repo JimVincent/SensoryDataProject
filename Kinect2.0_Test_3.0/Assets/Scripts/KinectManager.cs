@@ -2,13 +2,13 @@
 using System.Collections;
 using Windows.Kinect;
 
-public class BodyManager : MonoBehaviour 
+public class KinectManager : MonoBehaviour 
 {
 	// static vars
-	public static BodyManager inst;
+	public static KinectManager inst;
 
 	// public vars
-	public bool Connected = false;	
+	public bool ready = false;	
 
 	// private vars
 	private KinectSensor sensor;
@@ -18,7 +18,7 @@ public class BodyManager : MonoBehaviour
 	// returns the user body
 	public Body GetBody()
 	{
-		if(Connected)
+		if(ready)
 		{
 			for(int i = 0; i < bodies.Length; ++i)
 			{
@@ -66,7 +66,7 @@ public class BodyManager : MonoBehaviour
 				if (bodies == null) 
 				{
 					bodies = new Body[sensor.BodyFrameSource.BodyCount];
-					Connected = true;
+					ready = true;
 				}
 
 				// occupy bodies
