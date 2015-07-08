@@ -8,17 +8,17 @@ public class KinectManager : MonoBehaviour
 	public static KinectManager inst;
 
 	// public vars
-	public bool ready = false;	
+	public bool isReady = false;	
 
 	// private vars
 	private KinectSensor sensor;
-	private BodyFrameReader reader;
+	private BodyFrameReader bodyReader;
 	private Body[] bodies = null;
 
 	// returns the user body
 	public Body GetBody()
 	{
-		if(ready)
+		if(isReady)
 		{
 			for(int i = 0; i < bodies.Length; ++i)
 			{
@@ -45,7 +45,7 @@ public class KinectManager : MonoBehaviour
 
 		if (sensor != null) 
 		{
-			reader = sensor.BodyFrameSource.OpenReader ();
+			bodyReader = sensor.BodyFrameSource.OpenReader();
 			
 			if (!sensor.IsOpen) 
 				sensor.Open ();
@@ -57,16 +57,16 @@ public class KinectManager : MonoBehaviour
 	// Update is called once per frame
 	void Update () 
 	{
-		if (reader != null) 
+		if (bodyReader != null) 
 		{
-			BodyFrame frame = reader.AcquireLatestFrame ();
+			BodyFrame frame = bodyReader.AcquireLatestFrame ();
 
 			if (frame != null) 
 			{
 				if (bodies == null) 
 				{
 					bodies = new Body[sensor.BodyFrameSource.BodyCount];
-					ready = true;
+					isReady = true;
 				}
 
 				// occupy bodies
@@ -80,10 +80,10 @@ public class KinectManager : MonoBehaviour
 
 	void OnApplicationQuit()
 	{
-		if (reader != null)
+		if (bodyReader != null)
 		{
-			reader.Dispose();
-			reader = null;
+			bodyReader.Dispose();
+			bodyReader = null;
 		}
 		
 		if (sensor != null)

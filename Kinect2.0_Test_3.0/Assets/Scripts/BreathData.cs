@@ -2,17 +2,14 @@
 using System.Collections;
 using Windows.Kinect;
 
-public enum breathState {In, Out};
+public enum BreathState {In, Out};
 
 public class BreathData : MonoBehaviour 
 {
-	/// <summary>
-	/// Accessor for KinectManager static Instance
-	/// </summary>
-	private KinectManager bodyM;
+	public static BreathData inst;
 
 	/// <summary>
-	/// The window length that data is acumulated before averaging
+	/// The window length that data is accumulated  before averaging
 	/// </summary>
 	[Range(0.1f, 2.0f)]public float sampleTime = 0.3f;
 
@@ -20,57 +17,70 @@ public class BreathData : MonoBehaviour
 	/// How sensitive the system is to movement.
 	/// eg. 100 is full sensitivity which may pick up on digital jittering input.
 	/// </summary>
-	[Range(1, 100)] public int sensitivity = 90;
+	[Range(0.0f, 1.0f)] public float sensitivity = 90;
 
 	/// <summary>
 	/// Shortest duration a breath cycle must be to be used for breathLength.
-	/// eg. 0.1 seconds may result in rapid in/out state changes which will result in a inaccurate reading.
+	/// eg. 0.1 seconds may result in rapid in/out breathState changes which will result in a inaccurate reading.
 	/// </summary>
-	[Range(0.1f, 2.0f)] public float stateChangeBuf = 1.0f;
+	[Range(0.1f, 2.0f)] public float breathStateChangeBuf = 1.0f;
 
 	/// <summary>
-	/// The current in/out state of the breath
+	/// Accessor for KinectManager static Instance
 	/// </summary>
-	public breathState state = breathState.In;
+	private KinectManager kinectMan;
+
+	/// <summary>
+	/// The current in/out breathState of the breath
+	/// </summary>
+	private BreathState breathState = BreathState.In;
 
 	/// <summary>
 	/// The reading provided from the previous sample window calculation
 	/// *Note: Holds a value greater than zero after second sample window has been calculated.
 	/// </summary>
-	public float previousReading = 0.0f;
+	private float previousReading = 0.0f;
 
 	/// <summary>
 	/// The most recent sample window calculation
 	/// </summary>
-	public float currentReading = 0.0f;
+	private float currentReading = 0.0f;
 
 	/// <summary>
 	/// The duration of the most recent breath cycle.
 	/// *Note: This is measured from in breath until the next in breath - 
-	/// But only if value is greater than stateChangeBuf.
+	/// But only if value is greater than breathStateChangeBuf.
 	/// </summary>
-	public float breathLength = 0.0f;
+	private float breathLength = 0.0f;
 
 	/// <summary>
 	/// Indicates whether a body has been found and is being tracked by the kinect.
 	/// *Note: On Kinect start up there is a few seconds before it tracks the users body - 
 	/// Also if the user moves out of sight this will result in false.
 	/// </summary>
-	public bool bodyTracked = false;
+	private bool bodyTracked = false;
 
 	/// <summary>
 	/// Accumulates Y pos from both shoulders over the duration of the sample window.
 	/// Simple 2 var system instead of using List (performance)
 	/// Both variables are reset to zero once sample window calculations are complete.
 	/// </summary>
-	public float logY = 0.0f; 	// acumulates Y pos during actice reading
-	public int logCount = 0; 	// counts log to determine average
+	private float logY = 0.0f; 	// acumulates Y pos during actice reading
+	private int logYCount = 0; 	// counts log to determine average
+
+	/// <summary>
+	/// Accumulates breathLength values.
+	/// Simple 2 var system instead of using List (performance)
+	/// Only gets reset when user calls RefreshBreath()
+	/// </summary>
+	private float logLength = 0.0f;
+	private int logLengthCount = 0;
 
 	/// <summary>
 	/// Timers for tracking durations
 	/// </summary>
 	private float sampleT = 0.0f;
-	public float lengthT = 0.0f;
+	private float lengthT = 0.0f;
 
 	/// <summary>
 	/// Switch for breath cycle indication
@@ -78,11 +88,80 @@ public class BreathData : MonoBehaviour
 	private bool inhaled = false;
 	private bool exhaled = false;
 
+	// User Get Functions ////////////////////////////////////////////////////////////////////////////////////////////
+
+	/// <summary>
+	/// Returns true if the class is ready to produce data.
+	/// </summary>
+	/// <returns><c>true</c>, if is ready was gotten, <c>false</c> otherwise.</returns>
+	public bool GetIsTracking()
+	{
+		return bodyTracked;
+	}
+
+	/// <summary>
+	/// Gets the state of the breath as an enum.
+	/// </summary>
+	/// <returns>The breath state.</returns>
+	public BreathState GetBreathState()
+	{
+		return breathState;
+	}
+
+	/// <summary>
+	/// Gets the length of the most recent breath cycle (in and out).
+	/// </summary>
+	/// <returns>The breath length.</returns>
+	public float GetBreathLength()
+	{
+		return breathLength;
+	}
+
+	/// <summary>
+	/// Gets the average length of the breath.
+	/// </summary>
+	/// <returns>The average breath length.</returns>
+	public float GetAverageBreathLength()
+	{
+		if(logLengthCount > 0)
+			return logLength / logLengthCount;
+		else
+			return 0.0f;
+	}
+
+	/// <summary>
+	/// Resets the breath length average and breath cycle count
+	/// </summary>
+	public void RefreshBreath()
+	{
+		logLength = logLengthCount = 0;
+	}
+
+	/// <summary>
+	/// Gets the total breath cycles.
+	/// </summary>
+	/// <returns>The total breath cycles.</returns>
+	public int GetTotalBreathCycles()
+	{
+		return logLengthCount;
+	}
+
+	// Private Functions ////////////////////////////////////////////////////////////////////////////////////////////
+
+	/// <summary>
+	/// Initializes the static instance of this class
+	/// </summary>
+	void Awake()
+	{
+		if (inst == null)
+			inst = this;
+	}
+
 	// Use this for initialization
 	void Start () 
 	{
 		// assign static class vars
-		bodyM = KinectManager.inst;
+		kinectMan = KinectManager.inst;
 	}
 	
 	// Update is called once per frame
@@ -96,16 +175,16 @@ public class BreathData : MonoBehaviour
 		{
 			// calc average and update readings
 			previousReading = currentReading;
-			currentReading = logY / logCount;
+			currentReading = logY / logYCount;
 			UpdateBreath();
 
 			// reset logs / timer
-			sampleT = logY = logCount = 0;
+			sampleT = logY = logYCount = 0;
 		}
 		else
 		{
 			// retrieve tracked body
-			Body TempBody = bodyM.GetBody();
+			Body TempBody = kinectMan.GetBody();
 
 			if(TempBody != null)
 			{
@@ -115,22 +194,24 @@ public class BreathData : MonoBehaviour
 				float leftShoulder = TempBody.Joints[JointType.ShoulderLeft].Position.Y;
 				float rightShoulder = TempBody.Joints[JointType.ShoulderRight].Position.Y;
 				logY += leftShoulder + rightShoulder;
-				logCount++;
+				logYCount++;
 				
 				// measure breath duration
 				if(inhaled)
 					lengthT += Time.deltaTime;
 				
 				// Start of breath cycle
-				if(!inhaled && state == breathState.In)
+				if(!inhaled && breathState == BreathState.In)
 				{
 					inhaled = true;
+					logLengthCount++;
 				}
 				// End of cycle
-				else if(exhaled && state == breathState.In)
+				else if(exhaled && breathState == BreathState.In)
 				{
 					// log the breath duration
 					breathLength = lengthT;
+					logLength += lengthT;
 					
 					// reset timer / inhale switch
 					lengthT = 0.0f;
@@ -138,12 +219,12 @@ public class BreathData : MonoBehaviour
 				}
 			}
 			else
-				Debug.Log("No bodies are being tracked.");
+				bodyTracked = false;
 		}
 	}
 
 	/// <summary>
-	/// Updates the breath state based off sample window calculation.
+	/// Updates the breath breathState based off sample window calculation.
 	/// </summary>
 	private void UpdateBreath()
 	{
@@ -153,18 +234,18 @@ public class BreathData : MonoBehaviour
 			// passes sensitivity threshold
 			if(Mathf.Abs(previousReading - currentReading) > Sensitivity())
 			{
-				if(state == breathState.In && (lengthT / 2) > stateChangeBuf)
+				if(breathState == BreathState.In && (lengthT / 2) > breathStateChangeBuf)
 				{
 					if(currentReading < previousReading)
 					{
-						state = breathState.Out;
+						breathState = BreathState.Out;
 						exhaled = true;
 					}
 				}
-				else if(state == breathState.Out && lengthT > stateChangeBuf)
+				else if(breathState == BreathState.Out && lengthT > breathStateChangeBuf)
 				{
 					if(currentReading > previousReading)
-						state = breathState.In;
+						breathState = BreathState.In;
 				}
 			}
 		}
@@ -186,7 +267,7 @@ public class BreathData : MonoBehaviour
 			tempF = Mathf.Abs(currentReading) * tempI;
 		}
 
-		float val = (float)((100 - sensitivity) / 100) / tempI;
+		float val = ((1.0f - sensitivity) / 100.0f) / (float)tempI;
 
 		return val;
 	}
