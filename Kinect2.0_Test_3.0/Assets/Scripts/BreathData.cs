@@ -88,6 +88,8 @@ public class BreathData : MonoBehaviour
 	private bool inhaled = false;
 	private bool exhaled = false;
 
+
+
 	// User Get Functions ////////////////////////////////////////////////////////////////////////////////////////////
 
 	/// <summary>
@@ -189,7 +191,12 @@ public class BreathData : MonoBehaviour
 			if(TempBody != null)
 			{
 				bodyTracked = true;
-				
+
+
+
+				DetectionResult dResult = TempBody.Engaged;
+				print (dResult.ToString());
+
 				// read and log shoulder data
 				float leftShoulder = TempBody.Joints[JointType.ShoulderLeft].Position.Y;
 				float rightShoulder = TempBody.Joints[JointType.ShoulderRight].Position.Y;
