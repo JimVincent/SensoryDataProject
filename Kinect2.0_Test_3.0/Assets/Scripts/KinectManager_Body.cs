@@ -1,12 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections;
 using Windows.Kinect;
-using Microsoft.Kinect.Face;
 
-public class KinectManager : MonoBehaviour 
+public class KinectManager_Body : MonoBehaviour 
 {
 	// static vars
-	public static KinectManager inst;
+	public static KinectManager_Body inst;
 
 	// public vars
 	public bool isReady = false;	
@@ -15,10 +14,6 @@ public class KinectManager : MonoBehaviour
 	private KinectSensor sensor;
 	private BodyFrameReader bodyReader;
 	private Body[] bodies = null;
-
-	private FaceFrameSource faceFSource;
-	private FaceFrameReader faceFReader;
-	private FaceFrame faceFrame;
 
 	// returns the user body
 	public Body GetBody()
@@ -52,13 +47,6 @@ public class KinectManager : MonoBehaviour
 		{
 			bodyReader = sensor.BodyFrameSource.OpenReader();
 	
-
-			//faceFSource = new FaceFrameSource(sensor);
-			faceFReader = faceFSource.OpenReader ();
-
-			if(faceFSource.IsTrackingIdValid)
-				faceFSource.TrackingId = GetBody().TrackingId;
-			
 			if (!sensor.IsOpen) 
 				sensor.Open ();
 		} 
@@ -69,24 +57,20 @@ public class KinectManager : MonoBehaviour
 	// Update is called once per frame
 	void Update () 
 	{
-
-
 		if (bodyReader != null) 
 		{
 			BodyFrame frame = bodyReader.AcquireLatestFrame ();
 
 			if (frame != null) 
 			{
+				// create instance of bodies
 				if (bodies == null) 
 				{
 					bodies = new Body[sensor.BodyFrameSource.BodyCount];
 					isReady = true;
 				}
 
-				FaceFrameResult result = faceFReader.AcquireLatestFrame().FaceFrameResult;
-
-				result.FacePointsInColorSpace[FaceFrameFeatures.BoundingBoxInInfraredSpace].ToString();
-				// occupy bodies
+				// update body data
 				frame.GetAndRefreshBodyData(bodies);
 
 				frame.Dispose();
@@ -94,7 +78,7 @@ public class KinectManager : MonoBehaviour
 			}
 		}
 	}
-
+	// shut the kinect down
 	void OnApplicationQuit()
 	{
 		if (bodyReader != null)

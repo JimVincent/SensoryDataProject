@@ -28,7 +28,7 @@ public class BreathData : MonoBehaviour
 	/// <summary>
 	/// Accessor for KinectManager static Instance
 	/// </summary>
-	private KinectManager kinectMan;
+	private KinectManager_Body kinectMan;
 
 	/// <summary>
 	/// The current in/out breathState of the breath
@@ -163,7 +163,7 @@ public class BreathData : MonoBehaviour
 	void Start () 
 	{
 		// assign static class vars
-		kinectMan = KinectManager.inst;
+		kinectMan = KinectManager_Body.inst;
 	}
 	
 	// Update is called once per frame
